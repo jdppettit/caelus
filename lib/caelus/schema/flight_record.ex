@@ -6,7 +6,7 @@ defmodule Caelus.Schema.FlightRecord do
 
   schema "flight_records" do
     field :unique_id, :string
-    
+
     field :flight_date, :date
     field :flight_status, :string
 
@@ -23,6 +23,7 @@ defmodule Caelus.Schema.FlightRecord do
     field :arrival_scheduled, :utc_datetime
 
     field :airline_flight_number, :integer
+    field :airline_name, :string
     field :airline_iata, :string
     field :airline_icao, :string
 
@@ -38,44 +39,8 @@ defmodule Caelus.Schema.FlightRecord do
     alert
     |> cast(attrs, __schema__(:fields))
     |> validate_required([
-      :target, :type
+      :unique_id
     ])
-  end
-
-  def create_changeset(%__MODULE__{} = model,
-    type, target, interval, check_id, last_sent
-  ) do
-    changeset = __MODULE__.changeset(model, %{
-      type: type,
-      last_sent: last_sent,
-      check_id: check_id,
-      target: target,
-      interval: interval
-    })
-    case changeset.valid? do
-      true ->
-        {:ok, changeset}
-      false ->
-        Logger.error("#{__MODULE__}: Changeset invalid #{inspect(changeset)}")
-        {:error, :changeset_invalid}
-    end
-  end
-
-  def create_changeset(type, target, interval, check_id, last_sent) do
-    changeset = __MODULE__.changeset(%__MODULE__{}, %{
-      type: type,
-      last_sent: last_sent,
-      interval: interval,
-      check_id: check_id,
-      target: target
-    })
-    case changeset.valid? do
-      true ->
-        {:ok, changeset}
-      false ->
-        Logger.error("#{__MODULE__}: Changeset invalid #{inspect(changeset)}")
-        {:error, :changeset_invalid}
-    end
   end
 
   def create_changeset(map) do
@@ -118,5 +83,12 @@ defmodule Caelus.Schema.FlightRecord do
         Logger.error("#{__MODULE__}: Problem updating record #{inspect(changeset)}")
         {:error, :database_error}
     end
+  end
+
+  def generate_unique_id(depature_scheduled, arrival_scheduled, airline_flight_number) do
+    map = %{depature: depature_scheduled, arrial: arrival_scheduled, flight_number: airline_flight_number}
+    :crypto.hash(:sha256, inspect(map))
+    |> Base.encode64
+    |> IO.inspect
   end
 end
