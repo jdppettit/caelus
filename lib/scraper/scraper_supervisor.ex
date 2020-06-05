@@ -7,8 +7,9 @@ defmodule Scraper.ScraperSupervisor do
 
   def start_link(_arg) do
     Logger.debug("#{__MODULE__}: ScraperSupervisor starting")
-    DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+    v = DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__) |> IO.inspect(label: "this")
     schedule_scrapers()
+    v
   end
 
   def init(:ok) do
@@ -20,12 +21,12 @@ defmodule Scraper.ScraperSupervisor do
   end
 
   def schedule_scrapers do
-    Enum.map(@airpots, fn airport_icao -> 
+    Enum.map(@airports, fn airport_icao -> 
       Logger.info("#{__MODULE__}: Starting scraper for airport #{airport_icao}")
       DynamicSupervisor.start_child(__MODULE__, %{
-        id: Scraper.AviationStack,
-        start: {Scraper.AviationStack, :start_link, [airport_icao]}
-      })
+        id: Scraper.Providers.AviationStack,
+        start: {Scraper.Providers.AviationStack, :start_link, [airport_icao]}
+      }) |> IO.inspect
     end)
   end
 

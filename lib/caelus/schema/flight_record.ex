@@ -22,7 +22,7 @@ defmodule Caelus.Schema.FlightRecord do
     field :arrival_timezone, :string
     field :arrival_scheduled, :utc_datetime
 
-    field :airline_flight_number, :integer
+    field :airline_flight_number, :string
     field :airline_name, :string
     field :airline_iata, :string
     field :airline_icao, :string
@@ -41,6 +41,7 @@ defmodule Caelus.Schema.FlightRecord do
     |> validate_required([
       :unique_id
     ])
+    |> unique_constraint(:unique_id)
   end
 
   def create_changeset(map) do
@@ -75,6 +76,19 @@ defmodule Caelus.Schema.FlightRecord do
     end
   end
 
+  def upsert(changeset, unique_id) do
+    case Caelus.Repo.get_by(__MODULE__, [unique_id: unique_id]) do
+      model when not is_nil(model) ->
+        Logger.debug("#{__MODULE__}: Found existing record, updating")
+        __MODULE__.changeset(model, changeset)
+        |> __MODULE__.update
+      model when is_nil(model) ->
+        Logger.debug("#{__MODULE__}: No existing record found, inserting")
+        __MODULE__.changeset(%__MODULE__{}, changeset)
+        |> __MODULE__.insert
+    end 
+  end
+
   def update(changeset) do
     case Caelus.Repo.update(changeset) do
       {:ok, model} ->
@@ -89,6 +103,5 @@ defmodule Caelus.Schema.FlightRecord do
     map = %{depature: depature_scheduled, arrial: arrival_scheduled, flight_number: airline_flight_number}
     :crypto.hash(:sha256, inspect(map))
     |> Base.encode64
-    |> IO.inspect
   end
 end

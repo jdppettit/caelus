@@ -9,6 +9,39 @@ defmodule Scraper.HTTP do
     |> handle_response("get")
   end
 
+  def get_next(path, %{
+    "pagination" => %{
+      "limit" => limit,
+      "offset" => offset,
+      "total" => total,
+      "count" => count
+    }
+  } = res) when count > 0 do
+    Logger.info("#{__MODULE__}: Request begin get next #{path}")
+    new_offset = offset + limit
+    res = HTTPoison.get(
+      "#{path}&offset=#{new_offset}"
+    )
+    |> handle_response("get_next")
+  end
+
+  def get_next(path, %{
+    "pagination" => %{
+      "limit" => limit,
+      "offset" => offset,
+      "total" => total,
+      "count" => count
+    }
+  } = res) when count == 0 do
+    Logger.info("#{__MODULE__}: Request begin get next with zero count #{path}")
+    {:none_remaining, []}
+  end
+
+  def get_next(_path, _res) do
+    Logger.info("#{__MODULE__}: Request begin get next with incorrect params")
+    {:invalid_data, []}
+  end
+
   defp handle_response({:ok, resp}, action) do
     case resp.status_code do
       code when code in 200..299 ->

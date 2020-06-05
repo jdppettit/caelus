@@ -12,8 +12,10 @@ defmodule Caelus.Application do
       supervisor(Caelus.Repo, []),
       # Start the endpoint when the application starts
       supervisor(CaelusWeb.Endpoint, []),
-      # Start your own worker by calling: Caelus.Worker.start_link(arg1, arg2, arg3)
-      # worker(Caelus.Worker, [arg1, arg2, arg3]),
+      %{
+        id: Scraper.ScraperSupervisor,
+        start: {Scraper.ScraperSupervisor, :start_link, [[]]}      
+      }
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
