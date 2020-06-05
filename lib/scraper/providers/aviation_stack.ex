@@ -26,6 +26,7 @@ defmodule Scraper.Providers.AviationStack do
     get_depature_data(airport_icao)
     Logger.info("#{__MODULE__}: Depature data fetch complete")
 
+    Logger.info("#{__MODULE__}: Queuing next scrape in #{@default_interval}")
     Process.send_after(self(), :scrape_data, @default_interval)
     {:noreply, airport_icao}
   end
@@ -43,38 +44,8 @@ defmodule Scraper.Providers.AviationStack do
     {:ok, results} = Scraper.HTTP.get(arr_url)
     results["data"]
     |> Enum.map(fn r -> 
-      unique_id = FlightRecord.generate_unique_id(
-        r["departure"]["scheduled"],
-        r["arrival"]["scheduled"],
-        r["flight"]["iata"]
-      )
-      changeset_map = %{
-        unique_id: unique_id,
-        flight_date: r["flight_date"],
-        flight_status: r["flight_status"],
-        departure_iata: r["departure"]["iata"],
-        departure_icao: r["departure"]["icao"],
-        departure_name: r["departure"]["name"],
-        departure_timezone: r["departure"]["timezone"],
-        departure_scheduled: r["departure"]["scheduled"],
-        arrival_iata: r["arrival"]["iata"],
-        arrival_icao: r["arrival"]["icao"],
-        arrival_name: r["arrival"]["name"],
-        arrival_timezone: r["arrival"]["timezone"],
-        arrival_scheduled: r["arrival"]["scheduled"],
-        airline_name: r["airline"]["name"],
-        airline_iata: r["airline"]["iata"],
-        airline_icao: r["airline"]["icao"],
-      }
-      changeset_map = if not is_nil(r["aircraft"]) do
-        changeset_map
-        |> Map.put(:aircraft_registration, r["aircraft"]["registration"])
-        |> Map.put(:aircraft_type_iata, r["aircraft"]["iata"])
-        |> Map.put(:aircraft_type_icao, r["aircraft"]["icao"])
-        |> Map.put(:aircraft_icao24, r["aircraft"]["icao24"])
-      else
-        changeset_map
-      end
+      unique_id = construct_unique_id(r)
+      changeset_map = construct_map(r, unique_id)
       FlightRecord.upsert(changeset_map, unique_id)
     end)
     get_arrival_data(arr_url, results) # recurse
@@ -84,39 +55,8 @@ defmodule Scraper.Providers.AviationStack do
     with {:ok, results} <- Scraper.HTTP.get_next(arr_url, results) do
       results["data"]
       |> Enum.map(fn r -> 
-        unique_id = FlightRecord.generate_unique_id(
-          r["departure"]["scheduled"],
-          r["arrival"]["scheduled"],
-          r["flight"]["iata"]
-        )
-        changeset_map = %{
-          unique_id: unique_id,
-          flight_date: r["flight_date"],
-          flight_status: r["flight_status"],
-          departure_iata: r["departure"]["iata"],
-          departure_icao: r["departure"]["icao"],
-          departure_name: r["departure"]["name"],
-          departure_timezone: r["departure"]["timezone"],
-          departure_scheduled: r["departure"]["scheduled"],
-          arrival_iata: r["arrival"]["iata"],
-          arrival_icao: r["arrival"]["icao"],
-          arrival_name: r["arrival"]["name"],
-          arrival_timezone: r["arrival"]["timezone"],
-          arrival_scheduled: r["arrival"]["scheduled"],
-          airline_flight_number: r["flight"]["iata"],
-          airline_name: r["airline"]["name"],
-          airline_iata: r["airline"]["iata"],
-          airline_icao: r["airline"]["icao"],
-        }
-        changeset_map = if not is_nil(r["aircraft"]) do
-          changeset_map
-          |> Map.put(:aircraft_registration, r["aircraft"]["registration"])
-          |> Map.put(:aircraft_type_iata, r["aircraft"]["iata"])
-          |> Map.put(:aircraft_type_icao, r["aircraft"]["icao"])
-          |> Map.put(:aircraft_icao24, r["aircraft"]["icao24"])
-        else
-          changeset_map
-        end
+        unique_id = construct_unique_id(r)
+        changeset_map = construct_map(r, unique_id)
         FlightRecord.upsert(changeset_map, unique_id)
       end)
       get_arrival_data(arr_url, results) # recrurse
@@ -133,38 +73,8 @@ defmodule Scraper.Providers.AviationStack do
     {:ok, results} = Scraper.HTTP.get(arr_url)
     results["data"]
     |> Enum.map(fn r -> 
-      unique_id = FlightRecord.generate_unique_id(
-        r["departure"]["scheduled"],
-        r["arrival"]["scheduled"],
-        r["flight"]["iata"]
-      )
-      changeset_map = %{
-        unique_id: unique_id,
-        flight_date: r["flight_date"],
-        flight_status: r["flight_status"],
-        departure_iata: r["departure"]["iata"],
-        departure_icao: r["departure"]["icao"],
-        departure_name: r["departure"]["name"],
-        departure_timezone: r["departure"]["timezone"],
-        departure_scheduled: r["departure"]["scheduled"],
-        arrival_iata: r["arrival"]["iata"],
-        arrival_icao: r["arrival"]["icao"],
-        arrival_name: r["arrival"]["name"],
-        arrival_timezone: r["arrival"]["timezone"],
-        arrival_scheduled: r["arrival"]["scheduled"],
-        airline_name: r["airline"]["name"],
-        airline_iata: r["airline"]["iata"],
-        airline_icao: r["airline"]["icao"],
-      }
-      changeset_map = if not is_nil(r["aircraft"]) do
-        changeset_map
-        |> Map.put(:aircraft_registration, r["aircraft"]["registration"])
-        |> Map.put(:aircraft_type_iata, r["aircraft"]["iata"])
-        |> Map.put(:aircraft_type_icao, r["aircraft"]["icao"])
-        |> Map.put(:aircraft_icao24, r["aircraft"]["icao24"])
-      else
-        changeset_map
-      end
+      unique_id = construct_unique_id(r)
+      changeset_map = construct_map(r, unique_id)
       FlightRecord.upsert(changeset_map, unique_id)
     end)
     get_arrival_data(arr_url, results) # recurse
@@ -174,39 +84,8 @@ defmodule Scraper.Providers.AviationStack do
     with {:ok, results} <- Scraper.HTTP.get_next(arr_url, results) do
       results["data"]
       |> Enum.map(fn r -> 
-        unique_id = FlightRecord.generate_unique_id(
-          r["departure"]["scheduled"],
-          r["arrival"]["scheduled"],
-          r["flight"]["iata"]
-        )
-        changeset_map = %{
-          unique_id: unique_id,
-          flight_date: r["flight_date"],
-          flight_status: r["flight_status"],
-          departure_iata: r["departure"]["iata"],
-          departure_icao: r["departure"]["icao"],
-          departure_name: r["departure"]["name"],
-          departure_timezone: r["departure"]["timezone"],
-          departure_scheduled: r["departure"]["scheduled"],
-          arrival_iata: r["arrival"]["iata"],
-          arrival_icao: r["arrival"]["icao"],
-          arrival_name: r["arrival"]["name"],
-          arrival_timezone: r["arrival"]["timezone"],
-          arrival_scheduled: r["arrival"]["scheduled"],
-          airline_flight_number: r["flight"]["iata"],
-          airline_name: r["airline"]["name"],
-          airline_iata: r["airline"]["iata"],
-          airline_icao: r["airline"]["icao"],
-        }
-        changeset_map = if not is_nil(r["aircraft"]) do
-          changeset_map
-          |> Map.put(:aircraft_registration, r["aircraft"]["registration"])
-          |> Map.put(:aircraft_type_iata, r["aircraft"]["iata"])
-          |> Map.put(:aircraft_type_icao, r["aircraft"]["icao"])
-          |> Map.put(:aircraft_icao24, r["aircraft"]["icao24"])
-        else
-          changeset_map
-        end
+        unique_id = construct_unique_id(r)
+        changeset_map = construct_map(r, unique_id)
         FlightRecord.upsert(changeset_map, unique_id)
       end)
       get_arrival_data(arr_url, results) # recrurse
@@ -225,5 +104,44 @@ defmodule Scraper.Providers.AviationStack do
       :arrival ->
         "http://api.aviationstack.com/v1/flights?access_key=#{@access_key}&arr_icao=#{airport_icao}"
     end 
+  end
+
+  def construct_map(r, unique_id) do
+    changeset_map = %{
+      unique_id: unique_id,
+      flight_date: r["flight_date"],
+      flight_status: r["flight_status"],
+      departure_iata: r["departure"]["iata"],
+      departure_icao: r["departure"]["icao"],
+      departure_name: r["departure"]["name"],
+      departure_timezone: r["departure"]["timezone"],
+      departure_scheduled: r["departure"]["scheduled"],
+      arrival_iata: r["arrival"]["iata"],
+      arrival_icao: r["arrival"]["icao"],
+      arrival_name: r["arrival"]["name"],
+      arrival_timezone: r["arrival"]["timezone"],
+      arrival_scheduled: r["arrival"]["scheduled"],
+      airline_flight_number: r["flight"]["iata"],
+      airline_name: r["airline"]["name"],
+      airline_iata: r["airline"]["iata"],
+      airline_icao: r["airline"]["icao"],
+    }
+    if not is_nil(r["aircraft"]) do
+      changeset_map
+      |> Map.put(:aircraft_registration, r["aircraft"]["registration"])
+      |> Map.put(:aircraft_type_iata, r["aircraft"]["iata"])
+      |> Map.put(:aircraft_type_icao, r["aircraft"]["icao"])
+      |> Map.put(:aircraft_icao24, r["aircraft"]["icao24"])
+    else
+      changeset_map
+    end
+  end
+
+  def construct_unique_id(r) do
+    FlightRecord.generate_unique_id(
+      r["departure"]["scheduled"],
+      r["arrival"]["scheduled"],
+      r["flight"]["iata"]
+    )
   end
 end
