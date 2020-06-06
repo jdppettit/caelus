@@ -23,3 +23,7 @@ config :caelus, Caelus.Repo,
   database: "caelus_dev",
   hostname: "localhost",
   pool_size: 10
+
+config :caelus,
+  run_scraper: false,
+  airports: ["KMSP"]

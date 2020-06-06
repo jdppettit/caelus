@@ -3,11 +3,11 @@ defmodule Scraper.ScraperSupervisor do
 
   require Logger
 
-  @airports ['KMSP']
+  @airports Application.get_env(:caelus, :airports, [])
 
   def start_link(_arg) do
     Logger.debug("#{__MODULE__}: ScraperSupervisor starting")
-    v = DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__) |> IO.inspect(label: "this")
+    v = DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
     schedule_scrapers()
     v
   end
@@ -26,7 +26,7 @@ defmodule Scraper.ScraperSupervisor do
       DynamicSupervisor.start_child(__MODULE__, %{
         id: Scraper.Providers.AviationStack,
         start: {Scraper.Providers.AviationStack, :start_link, [airport_icao]}
-      }) |> IO.inspect
+      })
     end)
   end
 

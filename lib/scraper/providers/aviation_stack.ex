@@ -4,8 +4,9 @@ defmodule Scraper.Providers.AviationStack do
 
   alias Caelus.Schema.FlightRecord
 
-  @default_interval 86_400_000 # 24 hours
   @access_key Application.get_env(:caelus, :aviation_stack_api_key, nil)
+  @run_scraper Application.get_env(:caelus, :run_scraper, true)
+  @scrape_interval Application.get_env(:caelus, :scrape_interval, 86_400_000)
 
   def start_link(airport_icao) do
     Logger.debug("#{__MODULE__}: Starting scraper for aviation stack airport #{airport_icao}")
@@ -18,16 +19,20 @@ defmodule Scraper.Providers.AviationStack do
   end
 
   def handle_info(:scrape_data, airport_icao) do
-    Logger.info("#{__MODULE__}: Starting arrival data fetch")
-    get_arrival_data(airport_icao)
-    Logger.info("#{__MODULE__}: Arrival data fetch complete")
+    if @run_scraper do
+      Logger.info("#{__MODULE__}: Starting arrival data fetch")
+      get_arrival_data(airport_icao)
+      Logger.info("#{__MODULE__}: Arrival data fetch complete")
 
-    Logger.info("#{__MODULE__}: Starting depature data fetch")
-    get_depature_data(airport_icao)
-    Logger.info("#{__MODULE__}: Depature data fetch complete")
+      Logger.info("#{__MODULE__}: Starting depature data fetch")
+      get_depature_data(airport_icao)
+      Logger.info("#{__MODULE__}: Depature data fetch complete")
+    else
+      Logger.warn("#{__MODULE__}: Scraper is set to NOT run, skipping run")
+    end
 
-    Logger.info("#{__MODULE__}: Queuing next scrape in #{@default_interval}")
-    Process.send_after(self(), :scrape_data, @default_interval)
+    Logger.info("#{__MODULE__}: Queuing next scrape in #{@scrape_interval}ms")
+    Process.send_after(self(), :scrape_data, @scrape_interval)
     {:noreply, airport_icao}
   end
 
