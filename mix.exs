@@ -40,7 +40,9 @@ defmodule Caelus.Mixfile do
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       {:plug_cowboy, "~> 1.0"},
-      {:httpoison, "~> 1.6"}
+      {:httpoison, "~> 1.6"},
+      {:timex, "~> 3.5"},
+      {:numerix, "~> 0.6"}
     ]
   end
 

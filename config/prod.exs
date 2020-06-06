@@ -7,4 +7,8 @@ config :caelus, CaelusWeb.Endpoint,
 
 config :logger, level: :info
 
+config :caelus,
+  run_scraper: false,
+  airports: ["KMSP"]
+
 import_config "prod.secret.exs"
