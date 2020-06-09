@@ -3,6 +3,7 @@ defmodule Analytics.Computer.Terra do
   require Logger
 
   alias Caelus.Contexts.AnalyticsFlightRecords, as: FlightRecord
+  alias Caelus.Schema.AircraftType
 
   @run_analytics Application.get_env(:caelus, :run_analytics, true)
   @analytics_interval Application.get_env(:caelus, :analytics_interval, 60_000)
@@ -91,7 +92,17 @@ defmodule Analytics.Computer.Terra do
     filtered_std_dev = calculate_standard_deviation(filtered_values) |> IO.inspect(label: "filtered std dev")
     filtered_mean = calculate_mean(filtered_values) |> IO.inspect(label: "filtede mean")
     keys_to_remove = identify_statistically_insignificant_entries(frequency_map, filtered_std_dev, filtered_mean) |> IO.inspect(label: "interesting keys")
-    remaining_records = Map.drop(frequency_map, keys_to_remove) |> IO.inspect(label: "interesting airlines")
+    remaining_records = Map.drop(frequency_map, keys_to_remove) |> IO.inspect(label: "interesting aircraft")
+  end
+
+  def hydrate_aircraft_type(records) do
+    records
+    |> Map.keys
+    |> Enum.reduce(%{}, fn k, acc -> 
+      type_name = AircraftType.get_name_by_iata(k)
+      Map.put(acc, k, %{iata_type: k, name: type_name, count: Map.get(records, k)})
+    end)
+    |> IO.inspect(label: "hydrated")
   end
 
   def identify_statistically_insignificant_entries(map, std_dev, mean) do

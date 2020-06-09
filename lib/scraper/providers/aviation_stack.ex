@@ -2,7 +2,7 @@ defmodule Scraper.Providers.AviationStack do
   use GenServer
   require Logger
 
-  alias Caelus.Schema.FlightRecord
+  alias Caelus.Schema.{FlightRecord, AircraftType}
 
   @access_key Application.get_env(:caelus, :aviation_stack_api_key, nil)
   @run_scraper Application.get_env(:caelus, :run_scraper, true)
@@ -14,7 +14,16 @@ defmodule Scraper.Providers.AviationStack do
   end
 
   def init(airport_icao) do
+    if not AircraftType.data_loaded? do
+      Logger.info("#{__MODULE__}: Aircraft types not loaded, loading types")
+      load_aircraft_type_data()
+      Logger.info("#{__MODULE__}: Aircraft types loaded successfully")
+    end
+
+    Logger.info("#{__MODULE__}: Aircraft types loaded, skipping")
+
     Process.send_after(self(), :scrape_data, 1_000)
+
     {:ok, airport_icao}
   end
 
@@ -33,6 +42,7 @@ defmodule Scraper.Providers.AviationStack do
       resp_dep_code == :error or resp_arr_code == :error
     else
       Logger.warn("#{__MODULE__}: Scraper is set to NOT run, skipping run")
+      false
     end
 
     if backoff? do
@@ -133,6 +143,10 @@ defmodule Scraper.Providers.AviationStack do
     end 
   end
 
+  def construct_aircraft_type_url() do
+    "http://api.aviationstack.com/v1/aircraft_types?access_key=#{@access_key}"
+  end
+
   def construct_map(r, unique_id) do
     changeset_map = %{
       unique_id: unique_id,
@@ -164,11 +178,51 @@ defmodule Scraper.Providers.AviationStack do
     end
   end
 
+  def construct_type_map(r) do
+    %{
+      iata_type: r["iata_code"],
+      name: r["aircraft_name"]
+    }
+  end 
+
   def construct_unique_id(r) do
     FlightRecord.generate_unique_id(
       r["departure"]["scheduled"],
       r["arrival"]["scheduled"],
       r["flight"]["iata"]
     )
+  end
+
+  def load_aircraft_type_data() do
+    url = construct_aircraft_type_url()
+    case Scraper.HTTP.get(url) do
+      {:ok, results} -> 
+        results["data"]
+        |> Enum.map(fn r -> 
+          changeset_map = construct_type_map(r)
+          AircraftType.upsert(changeset_map, r["iata_code"])
+        end)
+        load_aircraft_type_data(url, results) # recurse
+      {:error, error} ->
+        {:error, error}
+    end 
+  end
+
+  def load_aircraft_type_data(url, results) do
+    with {:ok, results} <- Scraper.HTTP.get_next(url, results) do
+      results["data"]
+      |> Enum.map(fn r -> 
+        changeset_map = construct_type_map(r)
+        AircraftType.upsert(changeset_map, r["iata_code"])
+      end)
+      load_aircraft_type_data(url, results) # recrurse
+    else
+      {:none_remaining, _} ->
+        :ok
+      {:invalid_data, _} ->
+        :ok
+      {:error, error} ->
+        {:error, error}
+    end 
   end
 end
