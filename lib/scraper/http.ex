@@ -17,8 +17,9 @@ defmodule Scraper.HTTP do
       "count" => count
     }
   } = res) when count > 0 do
-    Logger.info("#{__MODULE__}: Request begin get next #{path}")
+    Logger.info("Stats: limit #{limit} offset #{offset} total #{total} count #{count}")
     new_offset = offset + limit
+    Logger.info("#{__MODULE__}: Request begin get next #{path}&offset=#{new_offset}")
     res = HTTPoison.get(
       "#{path}&offset=#{new_offset}"
     )
@@ -56,6 +57,16 @@ defmodule Scraper.HTTP do
       _ ->
         Logger.info("#{__MODULE__}: Handle response failed: Received a #{inspect(resp.status_code)} Body: #{inspect(resp.body)}")
         send_failure(resp, action)
+    end 
+  end
+
+  defp handle_response({:error, error}, action) do
+    case error do
+      %HTTPoison.Error{id: nil, reason: timeout} ->
+        {:error, :timeout_exceeded}
+      _ ->
+        Logger.error("#{__MODULE__}: Got error #{inspect(error)} for action #{action}")
+        {:error, :unknown}
     end 
   end
 
