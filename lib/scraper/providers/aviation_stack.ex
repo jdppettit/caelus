@@ -19,20 +19,30 @@ defmodule Scraper.Providers.AviationStack do
   end
 
   def handle_info(:scrape_data, airport_icao) do
-    if @run_scraper do
+    backoff? = if @run_scraper do
       Logger.info("#{__MODULE__}: Starting arrival data fetch")
-      get_arrival_data(airport_icao)
+      {resp_arr_code, resp_dep_val} = get_arrival_data(airport_icao)
+      Logger.info("#{inspect(resp_arr_code)} / #{inspect(resp_dep_val)}")
       Logger.info("#{__MODULE__}: Arrival data fetch complete")
 
       Logger.info("#{__MODULE__}: Starting depature data fetch")
-      get_depature_data(airport_icao)
+      {resp_dep_code, resp_dep_val} = get_depature_data(airport_icao)
+      Logger.debug("#{inspect(resp_dep_code)}")
       Logger.info("#{__MODULE__}: Depature data fetch complete")
+
+      resp_dep_code == :error or resp_arr_code == :error
     else
       Logger.warn("#{__MODULE__}: Scraper is set to NOT run, skipping run")
     end
 
-    Logger.info("#{__MODULE__}: Queuing next scrape in #{@scrape_interval}ms")
-    Process.send_after(self(), :scrape_data, @scrape_interval)
+    if backoff? do
+      Logger.warn("#{__MODULE__}: Received error triggering backoff")
+      Process.send_after(self(), :scrape_data, 60_000)
+    else
+      Logger.info("#{__MODULE__}: Queuing next scrape in #{@scrape_interval}ms")
+      Process.send_after(self(), :scrape_data, @scrape_interval)
+    end
+
     {:noreply, airport_icao}
   end
 
@@ -46,14 +56,18 @@ defmodule Scraper.Providers.AviationStack do
 
   def get_depature_data(airport_icao) do
     arr_url = construct_url(:depature, airport_icao)
-    {:ok, results} = Scraper.HTTP.get(arr_url)
-    results["data"]
-    |> Enum.map(fn r -> 
-      unique_id = construct_unique_id(r)
-      changeset_map = construct_map(r, unique_id)
-      FlightRecord.upsert(changeset_map, unique_id)
-    end)
-    get_arrival_data(arr_url, results) # recurse
+    case Scraper.HTTP.get(arr_url) do
+      {:ok, results} -> 
+        results["data"]
+        |> Enum.map(fn r -> 
+          unique_id = construct_unique_id(r)
+          changeset_map = construct_map(r, unique_id)
+          FlightRecord.upsert(changeset_map, unique_id)
+        end)
+        get_arrival_data(arr_url, results) # recurse
+      {:error, error} ->
+        {:error, error}
+    end 
   end
 
   def get_depature_data(arr_url, results) do
@@ -70,19 +84,25 @@ defmodule Scraper.Providers.AviationStack do
         :ok
       {:invalid_data, _} ->
         :ok
+      {:error, error} ->
+        {:error, error}
     end 
   end
 
   def get_arrival_data(airport_icao) do
     arr_url = construct_url(:arrival, airport_icao)
-    {:ok, results} = Scraper.HTTP.get(arr_url)
-    results["data"]
-    |> Enum.map(fn r -> 
-      unique_id = construct_unique_id(r)
-      changeset_map = construct_map(r, unique_id)
-      FlightRecord.upsert(changeset_map, unique_id)
-    end)
-    get_arrival_data(arr_url, results) # recurse
+    case Scraper.HTTP.get(arr_url) do
+      {:ok, results} -> 
+        results["data"]
+        |> Enum.map(fn r -> 
+          unique_id = construct_unique_id(r)
+          changeset_map = construct_map(r, unique_id)
+          FlightRecord.upsert(changeset_map, unique_id)
+        end)
+        get_arrival_data(arr_url, results) # recurse
+      {:error, error} ->
+        {:error, error}
+    end 
   end
 
   def get_arrival_data(arr_url, results) do
@@ -99,6 +119,8 @@ defmodule Scraper.Providers.AviationStack do
         :ok
       {:invalid_data, _} ->
         :ok
+      {:error, error} ->
+        {:error, error}
     end 
   end
 

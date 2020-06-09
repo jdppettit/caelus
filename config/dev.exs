@@ -26,4 +26,5 @@ config :caelus, Caelus.Repo,
 
 config :caelus,
   run_scraper: false,
+  run_analytics: false,
   airports: ["KMSP"]

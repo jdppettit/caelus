@@ -13,9 +13,9 @@ defmodule Caelus.Contexts.AnalyticsFlightRecords do
     query = from r in FlightRecord,
       where: r.departure_icao == ^airport_icao,
       or_where: r.arrival_icao == ^airport_icao,
-      where: r.inserted_at <= ^current_day,
-      where: r.inserted_at >= ^beginning_day,
-      order_by: [desc: r.inserted_at]
+      where: r.flight_date <= ^current_day,
+      where: r.flight_date >= ^beginning_day,
+      order_by: [desc: r.flight_date]
     
     case Caelus.Repo.all(query) do
       [_ | _] = records ->
